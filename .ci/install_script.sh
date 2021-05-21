@@ -8,6 +8,7 @@ set -ev
 
 pip install codecov
 pip install -U pip setuptools wheel
+sleep 180
 
 case "$INSTALL_TYPE" in
     dev)
