@@ -139,7 +139,23 @@ class Data_K(System):
         add_term = 0.0 # additional term under use_wcc_phase=True
         if self.use_wcc_phase:
             if flag=='AA':
-                add_term = - self.diag_w_centres
+                # add_term = - self.diag_w_centres
+                for iR in range(self.nRvec):
+                    if np.all(self.iRvec[iR] == 0):
+                        for iw in range(self.num_wann):
+                            XX_R[iw, iw, iR, :] -= self.wannier_centres_cart[iw, :]
+            elif flag == 'SA':
+                # S_W = self.fft_R_to_k(self.SS_R, hermitian=False)
+                # add_term = -np.einsum('kim,kjn,kijs,ja->kmnsa', self.UU_K.conj(), self.UU_K,
+                #     S_W, self.wannier_centres_cart)
+                XX_R -= np.einsum('ijRs,ja->ijRas', self.SS_R, self.wannier_centres_cart)
+                pass
+            elif flag == 'SHA':
+                # SH_W = self.fft_R_to_k(self.SH_R, hermitian=False)
+                # add_term = -np.einsum('kim,kjn,kijs,ja->kmnsa', self.UU_K.conj(), self.UU_K,
+                #     SH_W, self.wannier_centres_cart)
+                XX_R -= np.einsum('ijRs,ja->ijRas', self.SH_R, self.wannier_centres_cart)
+                pass
 
         res = self._rotate((self.fft_R_to_k( XX_R,hermitian=hermitian))[self.select_K]  )
         res = res + add_term
@@ -734,11 +750,11 @@ class Data_K(System):
 
     @lazy_property.LazyProperty
     def SA_H(self):
-        return self._R_to_k_H(self.SA_R.copy(), hermitian=False)
+        return self._R_to_k_H(self.SA_R.copy(), hermitian=False, flag='SA')
     
     @lazy_property.LazyProperty
     def SHA_H(self):
-        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False)
+        return self._R_to_k_H(self.SHA_R.copy(), hermitian=False, flag='SHA')
 #PRB QZYZ18, Qiao's way to calculate SHC
 
     def _shc_B_H_einsum_opt(self, C, A, B):
@@ -756,9 +772,9 @@ class Data_K(System):
     @lazy_property.LazyProperty
     def shc_B_H(self):
         SH_H = self._R_to_k_H(self.SH_R.copy(), hermitian=False)
-        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False)
+        shc_K_H = -1j*self._R_to_k_H(self.SR_R.copy(), hermitian=False, flag='SA')
         self._shc_B_H_einsum_opt(shc_K_H, self.S_H, self.D_H)
-        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False)
+        shc_L_H = -1j*self._R_to_k_H(self.SHR_R.copy(), hermitian=False, flag='SHA')
         self._shc_B_H_einsum_opt(shc_L_H, SH_H, self.D_H)
         return (self.delE_K[:,np.newaxis,:,:,np.newaxis]*self.S_H[:,:,:,np.newaxis,:] +
             self.E_K[:,np.newaxis,:,np.newaxis,np.newaxis]*shc_K_H[:,:,:,:,:] - shc_L_H)

@@ -28,6 +28,7 @@ from  .__Kpoint import exclude_equiv_points
 from . import __utility as utility
 
 def print_progress(count, total, t0):
+    return
     t = time() - t0
     t_remain = t / count * (total - count)
     print("{:20d}{:17.1f}{:22.1f}".format(count, t, t_remain), flush=True)

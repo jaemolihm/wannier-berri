@@ -222,6 +222,17 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                 SHA_adj = SHA.transpose(1,0,2,3).conj()
                 A += 1j *  (E[:,None,None,None]*SA_adj - SHA_adj)
                 A /= 2.0
+                if ik == 1:
+                    i1, i2 = 7, 8
+                    print("="*80)
+                    print(E)
+                    print(VV[i1, i2, :])
+                    print(SS[i1, i2, :])
+                    print(SA[i1, i2, :, :])
+                    print(SHA[i1, i2, :, :])
+                    print(A[i1, i2, :, :])
+                    print(B[i1, i2, :])
+                    print("="*80)
             else:
                 print("Invalid SHC type. ryoo or qiao.")
         elif  conductivity_type == 'tildeD':
