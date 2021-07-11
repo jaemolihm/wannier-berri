@@ -78,22 +78,19 @@ def fermiSurf(EF, E, kBT):   # returns arra [iF, n ]
         res[sel]=1./(4*kBT*np.cosh(arg[sel])**2)
         return res
 
-
-
-def kubo_sum_elements(x, y, num_wann):
-    # Compute np.einsum('nmab(c),wnm->wab(c)', x, y).
+def kubo_sum_elements(x, y):
+    # Compute np.einsum('(m...)(a...), w(m...) -> w(a...)', x, y).
     # This implementation is much faster than calling np.einsum.
-    assert y.shape[1] == num_wann
-    assert y.shape[2] == num_wann
-    y_reshape = y.reshape((-1, num_wann**2))
+    n_sum_inds = len(y.shape) - 1
+    assert x.shape[:n_sum_inds] == y.shape[1:]
 
-    assert x.shape == (num_wann, num_wann, 3, 3) or x.shape == (num_wann, num_wann, 3, 3, 3)
-    if x.shape == (num_wann, num_wann, 3, 3):
-        x_reshape = x.reshape((num_wann**2, 3 * 3))
-        return (y_reshape @ x_reshape).reshape((-1, 3, 3))
-    else:
-        x_reshape = x.reshape((num_wann**2, 3 * 3 * 3))
-        return (y_reshape @ x_reshape).reshape((-1, 3, 3, 3))
+    n_sum = np.prod(y.shape[1:])
+    x_reshape = x.reshape((n_sum, -1))
+    y_reshape = y.reshape((-1, n_sum))
+
+    output_shape = [y.shape[0]] + list(x.shape[n_sum_inds:])
+    return (y_reshape @ x_reshape).reshape(output_shape)
+
 
 def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_type='Lorentzian', adpt_smr=False,
                 adpt_smr_fac=np.sqrt(2), adpt_smr_max=0.1, adpt_smr_min=1e-15, shc_alpha=1, shc_beta=2, shc_gamma=3,
@@ -320,9 +317,9 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                 tmp2 = np.einsum('nma,mnb->nmab', A, A)
                 tmp3 = tmp1[:, :, None, None] * tmp2
                 # Hermitian part of the conductivity tensor
-                sigma_H [iEF] += -1 * pi * pre_fac * kubo_sum_elements(tmp3, delta, data.num_wann)
+                sigma_H [iEF] += -1 * pi * pre_fac * kubo_sum_elements(tmp3, delta)
                 # anti-Hermitian part of the conductivity tensor
-                sigma_AH[iEF]+= 1j * pre_fac * kubo_sum_elements(tmp3, re_efrac, data.num_wann)
+                sigma_AH[iEF]+= 1j * pre_fac * kubo_sum_elements(tmp3, re_efrac)
     
             elif conductivity_type == 'SHC':
                 delta_minus = delta
@@ -337,14 +334,12 @@ def opt_conductivity(data, Efermi,omega=None,  kBT=0, smr_fixed_width=0.1, smr_t
                     sigma_AH[iEF] += pre_fac * np.sum(imAB[:, :, np.newaxis] * temp1.transpose(1, 2, 0), axis = (0, 1)) / 2.0
                 else:
                     imAB = np.imag(np.einsum('nmac,mnb->nmabc',A,B))
-                    sigma_H [iEF] += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2, data.num_wann) / 4.0
-                    sigma_AH[iEF] += pre_fac * kubo_sum_elements(imAB, temp1, data.num_wann) / 2.0
+                    sigma_H [iEF] += 1j * pi * pre_fac * kubo_sum_elements(imAB, temp2) / 4.0
+                    sigma_AH[iEF] += pre_fac * kubo_sum_elements(imAB, temp1) / 2.0
 
             elif conductivity_type == 'shiftcurrent':
                 temp = -dfE[np.newaxis,:,:]*cfac
-
-                sigma_shift[iEF] += pre_fac * kubo_sum_elements(Imn, temp, data.num_wann)
-
+                sigma_shift[iEF] += pre_fac * kubo_sum_elements(Imn, temp)
 
 
 
